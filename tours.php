@@ -26,11 +26,25 @@ include $_SERVER['DOCUMENT_ROOT'] . '/vendor/TourCMS.php';
 use TourCMS\Utils\TourCMS as TourCMS;
 $tourcms = new TourCMS($marketplace_id, $api_key, 'simplexml', $timeout);
 
+// Pagination
+// Number of elements per page
+$per_page = 20;
+// Current page
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+
 // Define search parameters
-$params = "country=ES&product_type=4";
+$params = array(
+	"country" => "ES",
+	"product_type" => "4",
+	"per_page" => $per_page,
+	"page" => $page
+);
+
+// Build the parameters string
+$querystring = http_build_query($params);
 
 // Query the TourCMS API
-$result = $tourcms->search_tours($params, $channel);
+$result = $tourcms->search_tours($querystring, $channel);
 
 ?>
 
@@ -111,6 +125,13 @@ $result = $tourcms->search_tours($params, $channel);
 // Check if the result is OK (there is no error)
 if($result->error=="OK") {
 
+	// Calculate how many pages we have
+	$pages = ceil($result->total_tour_count / $per_page);
+
+	?>
+	<p>Page <strong><?php print $page; ?></strong> of <strong><?php print $pages; ?></strong></p>
+	<?php
+
 	// If so loop through and display tours, creating a card for each element
 	foreach ($result->tour as $tour) :
 		?>
@@ -143,7 +164,7 @@ if($result->error=="OK") {
 							<a href="<?php print $tour->book_url ?>">
 								<p class="tourcms-card-text price-label" style="">Book now</p>
 								<!-- the price of the tour -->
-								<!-- alternative version with decimals: <p class="tourcms-card-text price"><span class='fromprice'>from &#8364;<?php print $tour->from_price; ?></span></p> -->
+								<!-- alternative version with decimals: <p class="tourcms-card-text price"><span class='fromprice'>from &#8364;< ?php print $tour->from_price; ?></span></p> -->
 								<p class="tourcms-card-text price"><span class='fromprice'>from <?php print $tour->from_price_display; ?></span></p>
 							</a>
 						</div>
@@ -172,7 +193,7 @@ if($result->error=="OK") {
 					<div class="carousel-inner">
 						<div class="carousel-item active">
 							<!-- the thumbnail image of the tour. Although "thumbnail_image" is recommended instead of "image", I use the latter for this specific case
-								 because the mobile design has bigger thumbnails and therefore could look worse with a lower image resolution. -->
+								 because the mobile design has bigger thumbnails and therefore could look worse with a lower image resolution if shown on bigger devices. -->
 							<img class="d-block w-100" src="<?php print $tour->image; ?>" alt="">
 						</div>
 					</div>
@@ -199,8 +220,32 @@ if($result->error=="OK") {
 
 <!--- End Mobile tour HTML -->
 
+		<p>
 		<?php
 	endforeach;
+
+	// Basic pagination
+	// Show only if not in first page
+	if($page > 1)
+	{
+		// First page
+		print '<a href="?page=1">&lt;&lt; First page &nbsp;</a>';
+		// Previous page
+		print '<a href="?page=' . ($page - 1) . '">&lt; Previous page &nbsp;</a>';
+	}
+	// Show only if not in last page
+	if($page < $pages)
+	{
+		// Next page
+		print '<a href="?page=' . ($page + 1) . '">Next page &gt; &nbsp;</a>';
+		// Last page
+		print '<a href="?page=' . $pages . '">Last page &gt;&gt;</a>';
+	}
+
+
+	?>
+		</p>
+	<?php
 
 } else {
 	// If not output the error
